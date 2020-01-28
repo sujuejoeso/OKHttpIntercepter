@@ -151,8 +151,6 @@ class LoggerInterceptor implements Interceptor {
     }
 }
 
-
-
 //class InterceptRequest implements Interceptor {
 //
 //    private static final String NEW_URL = "http://www.google.com";
