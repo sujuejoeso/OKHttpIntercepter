@@ -89,9 +89,9 @@ class LoggerInterceptor implements Interceptor {
 
     @Override
     public Response intercept(Chain chain) throws IOException {
-        Request request = chain.request();
+        Request request = chain.request();  //chain.request()截获 request
         printRequestMessage(request);
-        Response response = chain.proceed(request);
+        Response response = chain.proceed(request); //chain.proceed(request)方法截获 response
         printResponseMessage(response);
         return response;
     }
