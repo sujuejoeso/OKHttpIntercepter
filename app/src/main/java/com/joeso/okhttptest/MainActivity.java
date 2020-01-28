@@ -9,6 +9,8 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 
+import org.json.JSONObject;
+
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.HashMap;
@@ -50,32 +52,27 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private class MyAsyncTask extends AsyncTask <String,Object,String>{
-        OkHttpClient client = new OkHttpClient.Builder().addInterceptor(new InterceptRequest()).build();
+        OkHttpClient client = new OkHttpClient.Builder().build();
+        String outcome;
 
         @Override
         protected String doInBackground(String... urls) {
             Map map = new HashMap();
-            map.put("commodityType", "01");
-            Gson gson = new Gson();
-            String json = gson.toJson(map);
+            map.put("code", "1111");
+            map.put("phone", "0405060781");
+            JSONObject jsonObject = new JSONObject(map);
+            String json = jsonObject.toString();
 
-            final Request request = new Request.Builder()
-                    .url("http://192.168.32.77:8089/api/commodity/getCommodityList")
+            Request request = new Request.Builder()
+                    .url("http://fitstop.pixelforcesystems.com.au/api/v1/auth/sign_in")
                     .post(RequestBody.create(json,MediaType.parse("application/json") ))
                     .build();
-            Call call = client.newCall(request);
-            call.enqueue(new Callback() {
-                @Override
-                public void onFailure(Call call, IOException e) {
-                }
-
-                @Override
-                public void onResponse(Call call, Response response) throws IOException {
-
-                }
-            });
-
-            return "";
+            try {
+                Response response = client.newCall(request).execute();
+                return response.body().string();
+            } catch (IOException e) {
+                return e.getMessage();
+            }
         }
 
         @Override
@@ -86,93 +83,92 @@ public class MainActivity extends AppCompatActivity {
     }
 }
 
-
-class LoggerInterceptor implements Interceptor {
-
-    public static final String TAG = "OkHttp Log";
-
-    @Override
-    public Response intercept(Chain chain) throws IOException {
-        Request request = chain.request();
-        printRequestMessage(request);
-        Response response = chain.proceed(request);
-        printResponseMessage(response);
-        return response;
-    }
-
-    /**
-     * 打印请求消息
-     *
-     * @param request 请求的对象
-     */
-    private void printRequestMessage(Request request) {
-        if (request == null) {
-            return;
-        }
-        Log.e(TAG, "Url : " + request.url().url().toString());
-        Log.e(TAG, "Method: " + request.method());
-        Log.e(TAG, "Heads : " + request.headers());
-        RequestBody requestBody = request.body();
-        if (requestBody == null) {
-            return;
-        }
-        try {
-            Buffer bufferedSink = new Buffer();
-            requestBody.writeTo(bufferedSink);
-            Charset charset = requestBody.contentType().charset();
-            charset = charset == null ? Charset.forName("utf-8") : charset;
-            Log.e(TAG, "Params: " + bufferedSink.readString(charset));
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    /**
-     * 打印返回消息
-     *
-     * @param response 返回的对象
-     */
-    private void printResponseMessage(Response response) {
-        if (response == null) {
-            return;
-        }
-        ResponseBody responseBody = response.body();
-        long contentLength = responseBody.contentLength();
-        BufferedSource source = responseBody.source();
-        try {
-            source.request(Long.MAX_VALUE); // Buffer the entire body.
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        Buffer buffer = source.buffer();
-        Charset charset=Charset.defaultCharset();
-        MediaType contentType = responseBody.contentType();
-        if (contentType != null) {
-            charset = contentType.charset(Charset.forName("utf-8"));
-        }
-        if (contentLength != 0) {
-            String result = buffer.clone().readString(charset);
-
-            Log.e(TAG, "Head: " + response.headers());
-            Log.e(TAG, "body: " + result);
-        }
-    }
-}
-
-
-
-class InterceptRequest implements Interceptor {
-
-    private static final String NEW_URL = "http://www.google.com";
-    @Override
-    public Response intercept(Chain chain) throws IOException {
-
-        Request.Builder requestBuilder = chain.request().newBuilder();
-        //adding a header to the original request
-        //requestBuilder.addHeader("joe","Intercepted");
-        //changing the URL
-        requestBuilder.url(NEW_URL);
-        //returns a response
-        return chain.proceed(requestBuilder.build());
-    }
-}
+//class LoggerInterceptor implements Interceptor {
+//
+//    public static final String TAG = "OkHttp Log";
+//
+//    @Override
+//    public Response intercept(Chain chain) throws IOException {
+//        Request request = chain.request();
+//        printRequestMessage(request);
+//        Response response = chain.proceed(request);
+//        printResponseMessage(response);
+//        return response;
+//    }
+//
+//    /**
+//     * 打印请求消息
+//     *
+//     * @param request 请求的对象
+//     */
+//    private void printRequestMessage(Request request) {
+//        if (request == null) {
+//            return;
+//        }
+//        Log.e(TAG, "Url : " + request.url().url().toString());
+//        Log.e(TAG, "Method: " + request.method());
+//        Log.e(TAG, "Heads : " + request.headers());
+//        RequestBody requestBody = request.body();
+//        if (requestBody == null) {
+//            return;
+//        }
+//        try {
+//            Buffer bufferedSink = new Buffer();
+//            requestBody.writeTo(bufferedSink);
+//            Charset charset = requestBody.contentType().charset();
+//            charset = charset == null ? Charset.forName("utf-8") : charset;
+//            Log.e(TAG, "Params: " + bufferedSink.readString(charset));
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
+//    }
+//
+//    /**
+//     * 打印返回消息
+//     *
+//     * @param response 返回的对象
+//     */
+//    private void printResponseMessage(Response response) {
+//        if (response == null) {
+//            return;
+//        }
+//        ResponseBody responseBody = response.body();
+//        long contentLength = responseBody.contentLength();
+//        BufferedSource source = responseBody.source();
+//        try {
+//            source.request(Long.MAX_VALUE); // Buffer the entire body.
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
+//        Buffer buffer = source.buffer();
+//        Charset charset=Charset.defaultCharset();
+//        MediaType contentType = responseBody.contentType();
+//        if (contentType != null) {
+//            charset = contentType.charset(Charset.forName("utf-8"));
+//        }
+//        if (contentLength != 0) {
+//            String result = buffer.clone().readString(charset);
+//
+//            Log.e(TAG, "Head: " + response.headers());
+//            Log.e(TAG, "body: " + result);
+//        }
+//    }
+//}
+//
+//
+//
+//class InterceptRequest implements Interceptor {
+//
+//    private static final String NEW_URL = "http://www.google.com";
+//    @Override
+//    public Response intercept(Chain chain) throws IOException {
+//
+//        Request.Builder requestBuilder = chain.request().newBuilder();
+//        //adding a header to the original request
+//        //requestBuilder.addHeader("joe","Intercepted");
+//        //changing the URL
+//        requestBuilder.url(NEW_URL);
+//        //returns a response
+//        return chain.proceed(requestBuilder.build());
+//    }
+//}
