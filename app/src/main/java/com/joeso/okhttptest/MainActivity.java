@@ -26,7 +26,10 @@ import okhttp3.RequestBody;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
 import okio.Buffer;
+import okio.BufferedSink;
 import okio.BufferedSource;
+import okio.GzipSink;
+import okio.Okio;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -79,7 +82,6 @@ public class MainActivity extends AppCompatActivity {
         protected void onPostExecute(String result) {
             tvResult.setText(result);
         }
-
     }
 }
 
@@ -103,6 +105,7 @@ class LoggerInterceptor implements Interceptor {
         if (request == null) {
             return;
         }
+        Log.e(TAG, "-----------------------Request intercepted-----------------------");
         Log.e(TAG, "Url : " + request.url().url().toString());
         Log.e(TAG, "Method: " + request.method());
         Log.e(TAG, "Heads : " + request.headers());
@@ -111,6 +114,7 @@ class LoggerInterceptor implements Interceptor {
             return;
         }
         try {
+            request.body().toString();
             Buffer bufferedSink = new Buffer();
             requestBody.writeTo(bufferedSink);
             Charset charset = requestBody.contentType().charset();
@@ -125,6 +129,7 @@ class LoggerInterceptor implements Interceptor {
         Print Response
      */
     private void printResponseMessage(Response response) {
+        Log.e(TAG, "-----------------------Respond intercepted-----------------------");
         if (response == null) {
             return;
         }
@@ -144,12 +149,48 @@ class LoggerInterceptor implements Interceptor {
         }
         if (contentLength != 0) {
             String result = buffer.clone().readString(charset);
-
+            Log.e(TAG, "-----------------------headers----------------------");
             Log.e(TAG, "Head: " + response.headers());
+            Log.e(TAG, "-----------------------body----------------------");
             Log.e(TAG, "body: " + result);
         }
+        Log.e(TAG, "-----------------------Finished----------------------");
     }
 }
+
+/** This interceptor compresses the HTTP request body. Many webservers can't handle this! */
+final class GzipRequestInterceptor implements Interceptor {
+    @Override public Response intercept(Interceptor.Chain chain) throws IOException {
+        Request originalRequest = chain.request();
+        if (originalRequest.body() == null || originalRequest.header("Content-Encoding") != null) {
+            return chain.proceed(originalRequest);
+        }
+
+        Request compressedRequest = originalRequest.newBuilder()
+                .header("Content-Encoding", "gzip")
+                .method(originalRequest.method(), gzip(originalRequest.body()))
+                .build();
+        return chain.proceed(compressedRequest);
+    }
+
+    private RequestBody gzip(final RequestBody body) {
+        return new RequestBody() {
+            @Override public MediaType contentType() {
+                return body.contentType();
+            }
+
+            @Override public long contentLength() {
+                return -1; // We don't know the compressed length in advance!
+            }
+
+            @Override public void writeTo(BufferedSink sink) throws IOException {
+                BufferedSink gzipSink = Okio.buffer(new GzipSink(sink));
+                body.writeTo(gzipSink);
+                gzipSink.close();
+            }
+        };
+    } }
+
 
 //class InterceptRequest implements Interceptor {
 //
