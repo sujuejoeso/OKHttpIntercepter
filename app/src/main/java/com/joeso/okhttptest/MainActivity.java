@@ -8,16 +8,14 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
-
 import org.json.JSONObject;
-
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.HashMap;
 import java.util.Map;
 
-import okhttp3.Call;
-import okhttp3.Callback;
+import okhttp3.FormBody;
+import okhttp3.HttpUrl;
 import okhttp3.Interceptor;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -26,24 +24,20 @@ import okhttp3.RequestBody;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
 import okio.Buffer;
-import okio.BufferedSink;
+
 import okio.BufferedSource;
-import okio.GzipSink;
-import okio.Okio;
 
 public class MainActivity extends AppCompatActivity {
 
     TextView tvResult;
     EditText txtUrl;
     Button bnGet;
-    String url="https://raw.github.com/square/okhttp/master/README.md";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         txtUrl=findViewById(R.id.txt_url);
-        txtUrl.setText(url);
         tvResult=findViewById(R.id.tv_result);
         bnGet=findViewById(R.id.bn_get);
         bnGet.setOnClickListener(new View.OnClickListener() {
@@ -55,7 +49,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private class MyAsyncTask extends AsyncTask <String,Object,String>{
-        OkHttpClient client = new OkHttpClient.Builder().addInterceptor(new LoggerInterceptor()).build();
+        OkHttpClient client = new OkHttpClient.Builder().addInterceptor(new LoggerInterceptor()).addInterceptor(new MyInterceptor()).build();
         String outcome;
 
         @Override
@@ -67,7 +61,7 @@ public class MainActivity extends AppCompatActivity {
             String json = jsonObject.toString();
 
             Request request = new Request.Builder()
-                    .url("http://fitstop.pixelforcesystems.com.au/api/v1/auth/sign_in")
+                    .url("http://fitstop.pixelforcesystems.com.au/api/v1/auth/sign_out")
                     .post(RequestBody.create(json,MediaType.parse("application/json") ))
                     .build();
             try {
@@ -77,7 +71,6 @@ public class MainActivity extends AppCompatActivity {
                 return e.getMessage();
             }
         }
-
         @Override
         protected void onPostExecute(String result) {
             tvResult.setText(result);
@@ -85,8 +78,28 @@ public class MainActivity extends AppCompatActivity {
     }
 }
 
-class LoggerInterceptor implements Interceptor {
+/**
+ *  A simple intercepter for tesing
+ */
+class MyInterceptor implements Interceptor {
+    private String newUrl="http://fitstop.pixelforcesystems.com.au/api/v1/auth/sign_in";
 
+    @Override
+    public Response intercept(Chain chain) throws IOException {
+        Request.Builder requestBuilder = chain.request().newBuilder();
+        requestBuilder.url(newUrl);
+        FormBody.Builder bodyBuilder = new FormBody.Builder();
+        bodyBuilder.add("code","2222");
+        bodyBuilder.add("phone","0405060782");
+        FormBody newBody = bodyBuilder.build();
+        requestBuilder.post(newBody);
+        return chain.proceed(requestBuilder.build());//returns a response
+    }
+}
+
+//==================================================================================================
+
+class LoggerInterceptor implements Interceptor {
     public static final String TAG = "jjjj";
 
     @Override
@@ -129,10 +142,11 @@ class LoggerInterceptor implements Interceptor {
         Print Response
      */
     private void printResponseMessage(Response response) {
-        Log.e(TAG, "-----------------------Respond intercepted-----------------------");
         if (response == null) {
+            Log.e(TAG, "======================== Respond = null ========================");
             return;
         }
+        Log.e(TAG, "===========================Respond intercepted=========================");
         ResponseBody responseBody = response.body();
         long contentLength = responseBody.contentLength();
         BufferedSource source = responseBody.source();
@@ -149,61 +163,10 @@ class LoggerInterceptor implements Interceptor {
         }
         if (contentLength != 0) {
             String result = buffer.clone().readString(charset);
-            Log.e(TAG, "-----------------------headers----------------------");
+            Log.e(TAG, "========================response headers ========================");
             Log.e(TAG, "Head: " + response.headers());
-            Log.e(TAG, "-----------------------body----------------------");
+            Log.e(TAG, "=========================response body ==========================");
             Log.e(TAG, "body: " + result);
         }
-        Log.e(TAG, "-----------------------Finished----------------------");
     }
 }
-
-/** This interceptor compresses the HTTP request body. Many webservers can't handle this! */
-final class GzipRequestInterceptor implements Interceptor {
-    @Override public Response intercept(Interceptor.Chain chain) throws IOException {
-        Request originalRequest = chain.request();
-        if (originalRequest.body() == null || originalRequest.header("Content-Encoding") != null) {
-            return chain.proceed(originalRequest);
-        }
-
-        Request compressedRequest = originalRequest.newBuilder()
-                .header("Content-Encoding", "gzip")
-                .method(originalRequest.method(), gzip(originalRequest.body()))
-                .build();
-        return chain.proceed(compressedRequest);
-    }
-
-    private RequestBody gzip(final RequestBody body) {
-        return new RequestBody() {
-            @Override public MediaType contentType() {
-                return body.contentType();
-            }
-
-            @Override public long contentLength() {
-                return -1; // We don't know the compressed length in advance!
-            }
-
-            @Override public void writeTo(BufferedSink sink) throws IOException {
-                BufferedSink gzipSink = Okio.buffer(new GzipSink(sink));
-                body.writeTo(gzipSink);
-                gzipSink.close();
-            }
-        };
-    } }
-
-
-//class InterceptRequest implements Interceptor {
-//
-//    private static final String NEW_URL = "http://www.google.com";
-//    @Override
-//    public Response intercept(Chain chain) throws IOException {
-//
-//        Request.Builder requestBuilder = chain.request().newBuilder();
-//        //adding a header to the original request
-//        //requestBuilder.addHeader("joe","Intercepted");
-//        //changing the URL
-//        requestBuilder.url(NEW_URL);
-//        //returns a response
-//        return chain.proceed(requestBuilder.build());
-//    }
-//}
